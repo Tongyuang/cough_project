@@ -1,0 +1,21 @@
+#INSTALLING ALL THESE PACKAGES ARE TOUGH. SOME OF THESE LINES COULD PROBABLY BE COMBINED, BUT DON'T DO IT.
+#IT'S NOT WORTH IT. ALSO, DON'T RE-ORDER. THAT WILL ALSO SCREW THINGS UP.
+sudo apt update
+sudo apt-get update
+sudo apt install libblas-dev llvm python3-pip python3-scipy
+sudo apt install libatlas-base-dev libportaudio0 libportaudio2 libportaudiocpp0 portaudio19-dev
+sudo apt-get update
+sudo apt-get install libhdf5-dev
+sudo apt-get update
+sudo apt-get install libhdf5-serial-dev
+pip3 install llvmlite
+pip3 install numba
+pip3 install scikit-learn
+pip3 install librosa
+pip3 install tensorflow --no-cache-dir
+pip3 install keras
+git clone http://people.csail.mit.edu/hubert/git/pyaudio.git
+cd pyaudio
+sudo python3 setup.py install
+sudo apt-get upgrade -y --fix-missing
+pip3 install colorama -U

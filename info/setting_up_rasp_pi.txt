@@ -1,0 +1,40 @@
+This is not exhaustive:
+	numpy
+	scipy
+	librosa
+	soundfile
+	tensorflow
+	keras
+	pandas
+	matplotlib
+	scikit-learn
+	h5py
+
+scikit-learn:
+	-works as is
+
+librosa:
+	-https://stackoverflow.com/questions/46751140/running-librosa-numba-on-raspberry-pi-3
+	-sudo apt install libblas-dev llvm python3-pip python3-scipy
+	-pip3 install llvmlite
+	-pip3 install numba
+	-pip3 install librosa
+tensorflow:
+	-sudo apt install libatlas-base-dev
+	-pip3 install tensorflow --no-cache-dir	
+	
+pyaudio:
+	-sudo apt-get install git
+	-git clone http://people.csail.mit.edu/hubert/git/pyaudio.git
+	-sudo apt-get install libportaudio0 libportaudio2 libportaudiocpp0 portaudio19-dev
+	-sudo apt-get install python3-dev
+	-sudo python3 pyaudio/setup.py install
+	
+h5py:
+	-https://stackoverflow.com/questions/48965309/h5py-import-error-on-libhdf5-serial-so-100
+	-sudo apt-get update
+	-sudo apt-get install libhdf5-dev
+	-sudo apt-get update
+	-sudo apt-get install libhdf5-serial-dev
+
+	
