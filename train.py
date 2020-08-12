@@ -10,28 +10,29 @@ from config import config_data as c_d
 from dataGenerator import train_valid_spliter,DataGenerator
 from load_dict import load_dict
 
-from model_conv_1D import res_model_1d
+from model_conv_1D import conv_model_1d,res_model_1d
 
 from tensorflow.keras import backend as K
 from tensorflow.keras.models import load_model
 import tensorflow as tf
 
 import socket
+from focal_loss import focal_loss
 
 #from metrics import F1Score
 
 # in case GPU memory exceeds
 #from tensorflow.compat.v1 import ConfigProto
 #from tensorflow.compat.v1 import InteractiveSession
-#from metrics import F1Score
+from metrics import F1Score
 
 save_weights_on_load = False#True
 
 def lr_scheduler(epoch):
-  if epoch < 2500:
+  if epoch < 1500:
     return(1e-4)
   else:
-    return(float(1e-4 * K.exp(0.00025 * (2500 - epoch))))
+    return(float(1e-4 * K.exp(0.00025 * (1500 - epoch))))
 
 class epoch_calback(tf.keras.callbacks.Callback):
 
@@ -53,8 +54,8 @@ class epoch_calback(tf.keras.callbacks.Callback):
 
     def on_epoch_end(self, epoch, logs=None):
 
-        if 'hyak.local' in socket.gethostname() and epoch < 2:
-            os.system('nvidia-smi')
+        #if 'hyak.local' in socket.gethostname() and epoch < 2:
+        #    os.system('nvidia-smi')
 
         if epoch % 10 != 0:
             return
@@ -130,6 +131,21 @@ def get_folders(args, folder_head):
 def train(args):
 
     CV = args.CV
+    folder = args.folder
+    model_name = args.model_name
+    # deal with folder
+    if not os.path.exists(folder):
+        raise Exception('folder path not exists!')
+
+    cp_path = folder + '/cp'
+    model_path = folder + '/model'
+    log_path = folder + '/logs'
+
+    for path in [cp_path,model_path,log_path]:
+        if not os.path.exists(path):
+            os.mkdir(path)
+
+
     dict1 = load_dict()
     # generate train_valid dict
     tvs = train_valid_spliter(dict1,CV)
@@ -140,25 +156,38 @@ def train(args):
     valid_data = DataGenerator(TRAIN=False,subtype_dict=valid,if_preprocess=False)
 
     # model
-    model = res_model_1d()
-    metrics_dict = {'acc':'accuracy','prec':'Precision','rec':'Recall'}
-    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=metrics_dict) #F1Score()])
+    assert model_name in ['conv_model_1d','res_model_1d']
 
-    checkpoint_path = './checkpoints/res_model/cp.ckpt'
-    checkpoint_dir = os.path.dirname(checkpoint_path)
+    if model_name == 'conv_model_1d':
+        model = conv_model_1d()
+    elif model_name == 'res_model_1d':
+        model = res_model_1d()
 
-    log_folder = checkpoint_dir + '/logs/res_model'
-    cp_callback = [ tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,monitor='val_loss',save_weights_only=True,verbose=1),
-                    tf.keras.callbacks.TensorBoard(log_dir = log_folder),
+    model.compile(optimizer='adam', loss=focal_loss, metrics=['accuracy','Precision','Recall',F1Score()]) 
+
+    # callback
+
+    cp_file = cp_path+'cp.ckpt'
+    cp_callback = [ tf.keras.callbacks.ModelCheckpoint(filepath=cp_file,monitor='val_loss',save_best_only=True,verbose=1),
+                    tf.keras.callbacks.TensorBoard(log_dir = log_path),
                     tf.keras.callbacks.LearningRateScheduler(lr_scheduler)]
 
 
     model.summary()
 
-    model.fit_generator(generator=train_data, steps_per_epoch=100, epochs=200,validation_data=valid_data, validation_steps=50,callbacks=cp_callback)
+    model.fit_generator(generator=train_data, steps_per_epoch=50, epochs=2500,validation_data=valid_data, validation_steps=10,callbacks=cp_callback)
                         #validation_freq=10)    
                         #callbacks=callbacks, initial_epoch=initial_epoch)  
-    model.save_weights('./checkpoints/ini_checkpoint')
+    
+    savefile = model_path+'.h5'
+    model.save(savefile)
+
+    savefile_path = model_path+'/model_weights'
+    if not os.path.exists(savefile_path):
+        os.mkdir(savefile_path)
+    
+    model.save_weights(savefile_path)
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
@@ -170,6 +199,8 @@ if __name__ == '__main__':
     parser.add_argument('--name', default='no-name', help="use to name this model run")
     parser.add_argument("--llf_pretrain", action='store_true', default=False)
     parser.add_argument("--ft_cs", action='store_true', default=False)
+    parser.add_argument('--folder', type=str, default="./checkpoints/model", help="where to store the model and checkpoints")
+    parser.add_argument('--model_name', type=str, default="conv_model_1d", help="model name")
     args = parser.parse_args()
 
     if args.CV not in [0,1,2,3]:
@@ -178,7 +209,7 @@ if __name__ == '__main__':
     #config = ConfigProto()
     #config.gpu_options.allow_growth = True
     #session = InteractiveSession(config=config)
-    os.environ['CUDA_VISIBLE_DEVICES'] = "3"
+    os.environ['CUDA_VISIBLE_DEVICES'] = "2"
     #tf.device('./gpu:0')
     #num_gpus = len(args.gpu_list.split(','))
     #num_gpus = max(1, num_gpus)

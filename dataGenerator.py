@@ -60,7 +60,7 @@ class DataGenerator(tf.keras.utils.Sequence):#tf.keras.utils.Sequence):
             pass
         else:
             wav = preprocessor.random_gain(wav)
-           # wav = preprocessor.add_background_noise(wav)
+            wav = preprocessor.add_background_noise(wav)
 
         return wav,lbl
 

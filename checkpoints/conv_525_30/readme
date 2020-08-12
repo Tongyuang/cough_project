@@ -1,0 +1,11 @@
+model:
+
+kernelsize=5
+dropout=0.8
+增加了kernel的个数
+
+training:
+使用focal loss
+去掉audioset和flu
+
+epoch=2500,step_per_epoch=50(指每个epoch，取数据操作20次)

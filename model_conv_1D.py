@@ -1,5 +1,5 @@
 from __future__ import print_function
-from tensorflow.keras.layers import Dense, BatchNormalization, Activation, Input, Conv1D, MaxPooling1D,GlobalAveragePooling1D
+from tensorflow.keras.layers import Dense, BatchNormalization, Activation, Input, Conv1D, MaxPooling1D,GlobalAveragePooling1D, Dropout
 from tensorflow.keras.models import Model
 import tensorflow as tf
 import config
@@ -49,21 +49,21 @@ def res_block_1d(X,filters,kernel_size,shortcut=True):
     X1 = Activation('relu')(X1)
     return X1 # (batch,steps,channels) , won't change channels
 
-def conv_model_1d(batch_size=config.config['batch_size']):
+def conv_model_1d(batch_size=config.config['batch_size'],dropout=True,drop_p=0.8):
 
     X_input = Input(shape=(config.MAX_SAMPS,1), batch_size=batch_size)# (batch, max_samps,1)
 
-    X = conv_block_1d(X_input,filters=8,kernel_size=5,BN=False)
+    X = conv_block_1d(X_input,filters=32,kernel_size=5,BN=False)
     X = MaxPooling1D(pool_size=5,strides=5)(X)
 
     for i in range(4):
-        X = conv_block_1d(X,filters=(2**(i+4)),kernel_size=2,BN=True)
+        X = conv_block_1d(X,filters=(2**(i+6)),kernel_size=5,BN=True)
+        X = conv_block_1d(X,filters=(2**(i+6)),kernel_size=5,BN=False)
         X = MaxPooling1D(pool_size=2,strides=2)(X)
-    X = conv_block_1d(X,filters=128,kernel_size=2,BN=True)
+    X = conv_block_1d(X,filters=512,kernel_size=5,BN=True)
     X = MaxPooling1D(pool_size=2,strides=2)(X)
-
+    X = Dropout(drop_p)(X)
     X = Dense( units=1, activation = 'sigmoid')(X)
-
     model = Model(inputs=X_input, outputs=X, name='conv_model_1D')
 
     return model

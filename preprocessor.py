@@ -29,21 +29,14 @@ def visualize(wav,lbl_real,lbl_predicted=None,ax=plt):
     
 
     y_max = np.max(wav_array)
-
     
-    if ax==plt:
-        ax.xlim(0,wav_array.shape[0])
-        ax.ylim(-1,1)
-    else:
-        ax.set_xlim(0,wav_array.shape[0])
-        ax.set_ylim(-1,1)
-
-    fig,axs = plt.subplots(nrows=2,ncols=1,sharex=True)
+    _,axs = plt.subplots(nrows=2,ncols=1,sharex=True)
     axs = axs.flatten()
-    #ax1 = ax.subplot(2,1,1)
+
+
     axs[0].plot(wav_array)
     axs[0].set_ylabel('initial wave')
-    axs[0].set_ylim([-1,1])
+    axs[0].set_xlim([0,wav_array.shape[0]])
 
     pos = np.linspace(ax.axis()[0],ax.axis()[1],lbl_real.shape[0])
 
@@ -53,18 +46,19 @@ def visualize(wav,lbl_real,lbl_predicted=None,ax=plt):
         if lbl_array.shape[0] > 50 :
             axs[1].plot(pos,lbl_array,color='red',label='true')
             axs[1].plot(pos,pred_array,color='blue',label='prediction')
+            axs[1].set_xlim([0,wav_array.shape[0]])
             axs[1].set_ylabel('lables')
             axs[1].legend()
         else:
             axs[1].text(0,y_max,'Bad labels: too little labels')
     else:
         if lbl_array.shape[0] > 50 :
-            axs[1] = ax.subplot(2,1,2)
             axs[1].plot(pos,lbl_array,color='red',label='true')
+            axs[1].set_xlim([0,wav_array.shape[0]])
             axs[1].set_ylabel('lables')
             axs[1].legend()
         else:
-            axs[0][1].text(0,y_max,'Bad labels: too little labels')
+            axs[1].text(0,y_max,'Bad labels: too little labels')
 
 
 def random_crop(wav,lbl=None,extra_p = 0.25):
@@ -209,13 +203,20 @@ def add_background_noise(wav,db=[-20,-8]):
     noise,_ = random_crop(noise,lbl=None)
     return (wav+noise)
 
-#def reverb(wav):
-#    augDir = os.path.join(c['folder_aug'], 'reverb')
-#    files_aug = [f for f in os.listdir(augDir) if f.endswith(".pickle")]
+def add_loud_noise(wav):
 
-#    pkl_file = os.path.join(augDir , np.random.choice(files_aug,1)[0])
-#    with open(pkl_file,'rb') as pf:
-#        aug = pickle.load(pf).astype("float64")
+    def add_noise(wav,noise,ampli=0.2):
+        '''
+        add loud noise where there's a long-time silence
+        silence: when the amplitude is less than 0.05
+        add noise that has max amplitude=ampli
+
+        para wav: initial wav
+        para noise: noise
+        '''
+        
+        return
+
 
 if __name__ == "__main__":
     pass

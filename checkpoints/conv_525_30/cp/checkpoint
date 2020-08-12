@@ -1,0 +1,2 @@
+model_checkpoint_path: "conv_525_3model"
+all_model_checkpoint_paths: "conv_525_3model"

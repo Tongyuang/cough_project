@@ -65,20 +65,20 @@ config = {
 }
 
 samps_per_subtype_32 = {
-'cough':10,
-'easy':1,
+'cough':20,
+#'easy':1,
 'hard':4,
-'human-misc':2,
+'human-misc':1,
 'instrument':1,
-'kitchen':2,
+'kitchen':1,
 'laugh':1,
-'medium':1,
-'music':2,
+#'medium':1,
+'music':1,
 'noise':1,
-'other':2,
-'respiratory':2,
+#'other':2,
+'respiratory':1,
 #'silence':1,
-'speech':3,
+'speech':1,
 } # 32
 
 samps_per_subtype_16 = {
@@ -120,8 +120,8 @@ domain_name_dict = {
 'pediatric':'ped',
 'whosecough':'whosecough',
 'southafrica':'southafrica'
-
 }
+
 #if sum([v for k, v in samps_per_subtype.items()]) != config['batch_size']:
  #   raise ("Incorrect samps per subtype")
 
