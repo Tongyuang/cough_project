@@ -205,17 +205,78 @@ def add_background_noise(wav,db=[-20,-8]):
 
 def add_loud_noise(wav):
 
-    def add_noise(wav,noise,ampli=0.2):
+    def add_noise(wav,noise,noise_ampli=0.75,silence_ampli=0.08,silence_range=8000):
         '''
         add loud noise where there's a long-time silence
-        silence: when the amplitude is less than 0.05
-        add noise that has max amplitude=ampli
+        silence: when the amplitude is less than 0.08
+        add noise that has max amplitude=noise_ampli*max(wav)
 
         para wav: initial wav
         para noise: noise
         '''
         
-        return
+
+        wav = np.array(wav)
+        noise = np.array(noise)
+
+        wav_max_ampli = np.max((np.max(wav),np.abs(np.min(wav))))
+
+        
+        # if there's a long-time silence:
+
+        silence_list = []
+        start_flag = 0
+        end_flag = 0
+
+        for i in range(wav.shape[0]):
+            if np.abs(wav[i]) < silence_ampli:
+                if start_flag<=end_flag:
+                    end_flag = i
+                else:
+                    start_flag = i
+                    end_flag = start_flag
+            else:
+                if start_flag >= end_flag:
+                    continue
+                else:
+                    # if silence range
+                    if end_flag-start_flag>silence_range:
+                        silence_list.append((start_flag,end_flag))
+                    start_flag = i
+                    end_flag=start_flag
+        
+        if len(silence_list):
+            for (start_idx,end_idx) in silence_list:
+                # random select
+                if noise.shape[0] < end_idx-start_idx:# noise too short
+                    continue
+                
+                noise_start_idx = random.randint(0,noise.shape[0]-(end_idx-start_idx))
+                noise_end_idx = noise_start_idx + (end_idx-start_idx)
+
+                noise_part = noise[noise_start_idx:noise_end_idx]
+                noise_part = ( noise_part / (np.max((np.max(noise_part),np.abs(np.min(noise_part))))) )* noise_ampli * wav_max_ampli 
+                wav[start_idx:end_idx] += noise_part
+        
+
+        return wav
+    
+    if not os.path.exists(config.noise_path):
+        raise Exception('noise path not exist!')
+
+    noise_file = config.noise_file_list[random.randint(0,len(config.noise_file_list)-1)]
+
+    noise_file = config.noise_path + '/' + noise_file
+
+    _, noise = wavfile.read(noise_file,'r')
+
+    wav = add_noise(wav,noise)
+
+    return wav
+
+
+
+                
 
 
 if __name__ == "__main__":

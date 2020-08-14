@@ -39,14 +39,17 @@ class train_valid_spliter:
 class DataGenerator(tf.keras.utils.Sequence):#tf.keras.utils.Sequence):
 
     'Load data for Keras'
-    def __init__(self, TRAIN, subtype_dict,if_preprocess = True ):
+    def __init__(self, TRAIN, subtype_dict,if_preprocess = True, use_loud_noise=True, samps_per_subtype_idx = 0):
 
         'Initialization'
         self.TRAIN=TRAIN
-        self.sps = config.samps_per_subtype_32
+        self.samps_per_subtype_idx = samps_per_subtype_idx
+        self.sps = config.samps_per_subtype_dict[samps_per_subtype_idx]
         self.random_seed_idx = 0
         self.if_preprocess = if_preprocess
         self.subtype_dict = subtype_dict
+        self.use_loud_noise = use_loud_noise
+        
 
     def __len__(self):
         '''
@@ -59,6 +62,8 @@ class DataGenerator(tf.keras.utils.Sequence):#tf.keras.utils.Sequence):
         if (self.TRAIN == False) or (self.if_preprocess == False):
             pass
         else:
+            if self.use_loud_noise:
+                wav = preprocessor.add_loud_noise(wav)
             wav = preprocessor.random_gain(wav)
             wav = preprocessor.add_background_noise(wav)
 
@@ -69,9 +74,9 @@ class DataGenerator(tf.keras.utils.Sequence):#tf.keras.utils.Sequence):
         X = []
         y = []
         # generate data randomly, distribution from config.py
-        for key in config.samps_per_subtype_32.keys():
+        for key in self.sps.keys():
             # random choice
-            filename_index = np.random.choice(np.arange(0,len(self.subtype_dict[key]),1),config.samps_per_subtype_32[key],replace=False)
+            filename_index = np.random.choice(np.arange(0,len(self.subtype_dict[key]),1),self.sps[key],replace=False)
             for idx in filename_index:
 
                 (domain,long_name) = self.subtype_dict[key][idx]

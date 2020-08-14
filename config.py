@@ -64,35 +64,41 @@ config = {
 'batch_num_per_epoch':batch_num_per_epoch
 }
 
-samps_per_subtype_32 = {
-'cough':20,
-#'easy':1,
+samps_per_subtype_32_0 = {
+'cough':10,
+'easy':1,
 'hard':4,
+'human-misc':2,
+'instrument':1,
+'kitchen':2,
+'laugh':1,
+'medium':1,
+'music':2,
+'noise':1,
+'other':2,
+'respiratory':2,
+#'silence':1,
+'speech':3,
+} # 32
+
+samps_per_subtype_32_1 = {
+'cough':20,
+'easy':1,
+'hard':1,
 'human-misc':1,
 'instrument':1,
 'kitchen':1,
 'laugh':1,
-#'medium':1,
+'medium':1,
 'music':1,
 'noise':1,
-#'other':2,
+'other':1,
 'respiratory':1,
 #'silence':1,
 'speech':1,
 } # 32
 
-samps_per_subtype_16 = {
-'cough':7,
-'easy':1,
-'hard':1,
-'human-misc':1,
-'kitchen':1,
-'medium':1,
-'noise':1,
-'respiratory':1,
-#'silence':1,
-'speech':2,
-} # 16
+
 
 samps_per_subtype_coughsense = {
 'cough':10,
@@ -120,10 +126,15 @@ domain_name_dict = {
 'pediatric':'ped',
 'whosecough':'whosecough',
 'southafrica':'southafrica'
+
 }
 
+samps_per_subtype_dict = {
+    0:samps_per_subtype_32_0,
+    1:samps_per_subtype_32_1
+}
 #if sum([v for k, v in samps_per_subtype.items()]) != config['batch_size']:
- #   raise ("Incorrect samps per subtype")
+#    raise ("Incorrect samps per subtype")
 
 #GETTING TENSORBOARD TO WORK ON AREA 51
 #'ssh -N -L 16006:127.0.0.1:6006 remote_sever -i path_to_priv_key'

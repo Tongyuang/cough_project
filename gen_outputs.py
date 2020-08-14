@@ -17,12 +17,13 @@ from focal_loss import focal_loss
 
 
 
-def load_model(model_dir,model_name='conv_model_1d'):
+def Load_model(model_dir,model_name='conv_model_1d'):
     if model_name == 'conv_model_1d':
         model = conv_model_1d()
         model.compile(optimizer='adam', loss=focal_loss, metrics=['accuracy','Precision','Recall',F1Score()]) 
         model.load_weights(model_dir)
         model.summary()
+        
     elif model_name == 'res_model_1d':
         model = res_model_1d()
         #metrics_dict = {'acc':'accuracy','prec':'Precision','rec':'Recall'}
@@ -104,7 +105,7 @@ def load_data(domain_name,batch_size=32,cough=False,No_cough=False,data_dir = '.
     return (output_wav,output_lbl)
 
 
-model_dir = './checkpoints/conv_525_3model/conv_525_3model'
+model_dir = './checkpoints/conv_525_3/model/model_weights/model_weights'
 domain_names = ['whosecough','southafrica','jotform','cs','audioset']
 save_dir = './imgs/results/conv_525_3/domain/'
 
@@ -112,7 +113,7 @@ if not os.path.exists(save_dir):
     os.mkdir(save_dir)
 
 if __name__ == "__main__":
-    model = load_model(model_dir,model_name='conv_model_1d')
+    model = Load_model(model_dir,model_name='conv_model_1d')
 
     for (i,domain) in enumerate(domain_names):
         if domain != 'fsd':
@@ -146,8 +147,8 @@ if __name__ == "__main__":
             os.mkdir(save_path)
         for i in range(32):
             pred = preds_no_cough[i]
-            pred[pred>=0.5] = 1
-            pred[pred<=0.5] = 0
+            pred[pred>=0.6] = 1
+            pred[pred<=0.6] = 0
             plt.figure()
             visualize(wav_no_cough[i],lbl_no_cough[i],pred,ax=plt)
             plt.savefig(save_path+'/%s_%d'%(domain,i)+'.png', bbox_inches='tight')
