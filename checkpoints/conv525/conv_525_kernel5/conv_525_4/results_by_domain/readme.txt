@@ -1,0 +1,1 @@
+20 samples of coughs in each batch of size 32

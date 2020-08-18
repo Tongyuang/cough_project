@@ -1,9 +1,17 @@
 import os
+from load_dict import load_dict
 
 
 config_data = {'folder_data': r'../data'}
 
+noise_path = '../data/musan/musan/noise/free-sound'
 
+if not os.path.exists(noise_path):
+        raise Exception('noise path not exist!')
+
+noise_file_list = os.listdir(noise_path)
+
+subtype_CV_dict,silence_dict = load_dict()
 all_files_path = '../data/all_files.csv'
 sr = 16000
 sr_str = '{}khz'.format(int(sr/1000))

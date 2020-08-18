@@ -57,13 +57,33 @@ class DataGenerator(tf.keras.utils.Sequence):#tf.keras.utils.Sequence):
         '''
         return c['batch_num_per_epoch']
 
-    def preprocess(self,wav,lbl):
+    def preprocess(self,wav_name,domain):
+
+        domain_path = 'wav_dur_{}_{}'.format(config.sr_str,config.domain_name_dict[domain])
+        wav_path = config.config_data['folder_data']+'/'+domain_path+'/'+wav_name +'.wav'
+        pkl_path = config.config_data['folder_data']+'/'+domain_path+'/'+'label'+wav_name[3:]+'.pkl'
+        if self.use_loud_noise and self.if_preprocess:
+            try:
+                wav = preprocessor.add_loud_noise(wav_name,domain)
+                with open(pkl_path,'rb') as pf:
+                    lbl = pickle.load(pf).astype("uint8")
+            except:
+                print('could not get file:',wav_path)
+                wav = np.zeros(config.sr*config.duration)
+                lbl = np.zeros(config.duration*((int)(1/config.duration_t)))
+        else: 
+            try:
+                with open(pkl_path,'rb') as pf:
+                    lbl = pickle.load(pf).astype("uint8")
+                _, wav = wavfile.read(wav_path) 
+            except:
+                print('could not get file:',wav_path)
+                wav = np.zeros(config.sr*config.duration)
+                lbl = np.zeros(config.duration*((int)(1/config.duration_t)))
         wav,lbl = preprocessor.random_crop(wav,lbl,extra_p=0.25)
         if (self.TRAIN == False) or (self.if_preprocess == False):
             pass
         else:
-            if self.use_loud_noise:
-                wav = preprocessor.add_loud_noise(wav)
             wav = preprocessor.random_gain(wav)
             wav = preprocessor.add_background_noise(wav)
 
@@ -80,24 +100,9 @@ class DataGenerator(tf.keras.utils.Sequence):#tf.keras.utils.Sequence):
             for idx in filename_index:
 
                 (domain,long_name) = self.subtype_dict[key][idx]
-                domain_path = 'wav_dur_{}_{}'.format(config.sr_str,config.domain_name_dict[domain])
-                wav_path = config.config_data['folder_data']+'/'+domain_path+'/'+long_name +'.wav'
-                pkl_path = config.config_data['folder_data']+'/'+domain_path+'/'+'label'+long_name[3:]+'.pkl'
-                
-
-                try:
-                    with open(pkl_path,'rb') as pf:
-                        aug = pickle.load(pf).astype("uint8")
-                    _, wav = wavfile.read(wav_path) 
-                except:
-                    print('could not get file:',wav_path)
-                    wav = np.zeros(config.sr*config.duration)
-                    aug = np.zeros(config.duration*((int)(1/config.duration_t)))
-
-                wav,aug = self.preprocess(wav,aug)
-
+                wav,lbl = self.preprocess(long_name,domain)
                 X.append(wav)
-                y.append(aug)
+                y.append(lbl)
 
         # if for some reason we couldn't get a sample, just repeat the last one
         while (len(X)<c['batch_size']):

@@ -10,7 +10,7 @@ from config import config_data as c_d
 from dataGenerator import train_valid_spliter,DataGenerator
 from load_dict import load_dict
 
-from models import model_conv_525,res_model_1d
+from models import model_conv_525,res_model_1d,model_conv_525_LSTM,model_conv_525_GRU,My_Unet_1d
 
 from tensorflow.keras import backend as K
 from tensorflow.keras.models import load_model
@@ -34,105 +34,13 @@ def lr_scheduler(epoch):
   else:
     return(float(1e-4 * K.exp(0.00025 * (1500 - epoch))))
 
-class epoch_calback(tf.keras.callbacks.Callback):
-
-    def __init__(self, model, val_gen, val_gen_full, file_writer, args):
-        self.model = model
-        self.val_gen = val_gen
-        self.val_gen_full = val_gen_full
-        self.filewriter = file_writer
-
-    def on_epoch_begin(self, epoch, logs=None):
-
-        #Set back to 0 for testing during this epoch
-        self.val_gen.random_seed_idx = 0
-        self.val_gen_full.idx = 0
-
-        # Beginning of epoch, set to something random for training
-        np.random.seed(int(time.time()))
-
-
-    def on_epoch_end(self, epoch, logs=None):
-
-        #if 'hyak.local' in socket.gethostname() and epoch < 2:
-        #    os.system('nvidia-smi')
-
-        if epoch % 10 != 0:
-            return
-
-        loss, acc, prec, recall, f1 = self.model.evaluate(self.val_gen_full, steps=len(self.val_gen_full)-2, verbose=True)
-        tf.summary.scalar('epoch_loss', loss, step=epoch)
-        tf.summary.scalar('epoch_accuracy', acc, step=epoch)
-        tf.summary.scalar('epoch_Precision', prec, step=epoch)
-        tf.summary.scalar('epoch_Recall', recall, step=epoch)
-        tf.summary.scalar('epoch_F1', f1, step=epoch)
-
-def get_model(args):
-
-    initial_epoch=0
-
-    if args.load_folder is not None:
-        folder_head = os.path.dirname(c_d['folder_data'])
-        load_folder = os.path.join(folder_head,args.load_folder)
-        if args.load_epoch is None:
-            checkpoints = np.array([[int(f.split('.')[1]), f] for f in os.listdir(load_folder) if f.endswith('.h5')], dtype=object)
-            initial_epoch, model_name = checkpoints[np.argsort(checkpoints[:, 0])][-1]
-        else:
-            initial_epoch = int(args.load_epoch)
-            model_name = 'model.{}.h5'.format(args.load_epoch)
-
-        load_path = os.path.join(load_folder, model_name)
-        model = load_model(load_path, {'relu6': relu6, 'DepthwiseConv2D': DepthwiseConv2D,
-                                           'AudioVarianceScaling': AudioVarianceScaling, 'F1Score': F1Score})
-
-        print("Loaded model from:",load_path)
-    else:
-        if args.model_type == 'conv_model_1D':
-            model = conv_model_1d()
-        else:
-            raise ValueError('Invalid model type specified in input arguments')
-
-        model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-
-    print("Starting New Model Training")
-
-    model.summary()
-
-    return(model, initial_epoch)
-
-def get_folders(args, folder_head):
-
-    checkpoints_folder = os.path.join(folder_head,'checkpoints')
-    logs_folder = os.path.join(folder_head, 'logs')
-    os.makedirs(checkpoints_folder, exist_ok=True)
-    os.makedirs(logs_folder, exist_ok=True)
-
-    i = 0
-    model_name = '_'.join([args.model_type, "CV-"+str(args.CV), args.name, str(i)])
-    path = os.path.join(checkpoints_folder, model_name)
-    while os.path.exists(path):
-        i += 1
-        model_name = '_'.join([args.model_type, "CV-"+str(args.CV), args.name, str(i)])
-        path = os.path.join(checkpoints_folder, model_name)
-
-    ckpt_folder = os.path.join(checkpoints_folder, model_name)
-    log_folder = os.path.join(logs_folder, model_name)
-    os.makedirs(ckpt_folder, exist_ok=True)
-    os.makedirs(log_folder, exist_ok=True)
-
-    ckpt_path = os.path.join(ckpt_folder, 'model.{epoch:03d}.h5')
-
-    # file_writer = tf.summary.create_file_writer(log_folder + "/metrics")
-    file_writer = tf.summary.create_file_writer(log_folder + "/full_file")
-    file_writer.set_as_default()
-
-    return(log_folder, file_writer, ckpt_path)
 
 def train(args):
 
     CV = args.CV
     folder = args.folder
     model_name = args.model_name
+    dropout = args.dropout
     # deal with folder
     if not os.path.exists(folder):
         raise Exception('folder path not exists!')
@@ -145,10 +53,9 @@ def train(args):
         if not os.path.exists(path):
             os.mkdir(path)
 
-
-    dict1 = load_dict()
+    
     # generate train_valid dict
-    tvs = train_valid_spliter(dict1,CV)
+    tvs = train_valid_spliter(config.subtype_CV_dict,CV)
     train,valid = tvs.gen_train_valid_df()
 
     use_loud_noise = args.use_loud_noise
@@ -156,16 +63,22 @@ def train(args):
 
     # dataloader
     train_data = DataGenerator(TRAIN=True,subtype_dict=train,if_preprocess=True,use_loud_noise=use_loud_noise,samps_per_subtype_idx=samps_per_subtype_idx)
-    valid_data = DataGenerator(TRAIN=False,subtype_dict=valid,if_preprocess=False,use_loud_noise=use_loud_noise,samps_per_subtype_idx=samps_per_subtype_idx)
+    valid_data = DataGenerator(TRAIN=False,subtype_dict=valid,if_preprocess=False,use_loud_noise=False,samps_per_subtype_idx=samps_per_subtype_idx)
 
     # model
-    assert model_name in ['conv_model_1d','res_model_1d']
+    assert model_name in ['conv_model_1d','res_model_1d','conv_model_1d_LSTM','conv_model_1d_GRU','My_Unet_1d']
 
     if model_name == 'conv_model_1d':
         model = model_conv_525()
     elif model_name == 'res_model_1d':
         model = res_model_1d()
-
+    elif model_name == 'conv_model_1d_LSTM':
+        model = model_conv_525_LSTM(dropout=dropout)
+    elif model_name == 'conv_model_1d_GRU':
+        model = model_conv_525_GRU(dropout=dropout)
+    elif model_name == 'My_Unet_1d':
+        model = My_Unet_1d(drop_p=dropout,output_layer='LSTM')
+    
     assert args.loss in ['binary_crossentropy', 'focal_loss']
     if args.loss == 'binary_crossentropy':
         model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy','Precision','Recall',F1Score()]) 
@@ -174,7 +87,7 @@ def train(args):
     # callback
 
     cp_file = cp_path+'/cp.ckpt'
-    cp_callback = [ tf.keras.callbacks.ModelCheckpoint(filepath=cp_file,monitor='val_loss',save_best_only=True,verbose=1),
+    cp_callback = [ tf.keras.callbacks.ModelCheckpoint(filepath=cp_file,monitor='val_loss',save_weights_only=True,verbose=1),
                     tf.keras.callbacks.TensorBoard(log_dir = log_path),
                     tf.keras.callbacks.LearningRateScheduler(lr_scheduler)]
 
@@ -192,7 +105,7 @@ def train(args):
     if not os.path.exists(savefile_path):
         os.mkdir(savefile_path)
     
-    model.save_weights(savefile_path)
+    model.save_weights(savefile_path+'/model_weights')
 
 if __name__ == '__main__':
 
@@ -204,6 +117,7 @@ if __name__ == '__main__':
     parser.add_argument("--samps_per_subtype_idx", type=int, default=0,help="index to samps_per_subtype")
     parser.add_argument('--folder', type=str, default="./checkpoints/model", help="where to store the model and checkpoints")
     parser.add_argument('--model_name', type=str, default="conv_model_1d", help="model name")
+    parser.add_argument('--dropout', type=float, default=0.0, help="add drop out? only valid for some models")
     parser.add_argument('--steps_each_epoch', type=int, default=50, help="steps each epoch")
     args = parser.parse_args()
 

@@ -1,5 +1,5 @@
 from load_dict import load_dict
-from model_conv_1D import conv_model_1d, res_model_1d
+from models import model_conv_525,model_conv_complex,model_conv_525_LSTM
 from scipy.io import wavfile
 import pickle
 import config
@@ -19,17 +19,17 @@ from focal_loss import focal_loss
 
 def Load_model(model_dir,model_name='conv_model_1d'):
     if model_name == 'conv_model_1d':
-        model = conv_model_1d()
-        model.compile(optimizer='adam', loss=focal_loss, metrics=['accuracy','Precision','Recall',F1Score()]) 
+        model = model_conv_525_LSTM()
+        model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy','Precision','Recall',F1Score()]) 
         model.load_weights(model_dir)
         model.summary()
         
-    elif model_name == 'res_model_1d':
-        model = res_model_1d()
+   # elif model_name == 'res_model_1d':
+        #model = res_model_1d()
         #metrics_dict = {'acc':'accuracy','prec':'Precision','rec':'Recall'}
-        model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy']) 
-        model.load_weights(model_dir)
-        model.summary()
+        #model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy']) 
+        #model.load_weights(model_dir)
+        #model.summary()
     return model
 
 def load_data(domain_name,batch_size=32,cough=False,No_cough=False,data_dir = '../data/',):
@@ -105,9 +105,9 @@ def load_data(domain_name,batch_size=32,cough=False,No_cough=False,data_dir = '.
     return (output_wav,output_lbl)
 
 
-model_dir = './checkpoints/conv_525_3/model/model_weights/model_weights'
+model_dir = './checkpoints/conv525/conv525_kernel2/conv_525_5/cp/cp.ckpt'
 domain_names = ['whosecough','southafrica','jotform','cs','audioset']
-save_dir = './imgs/results/conv_525_3/domain/'
+save_dir = './checkpoints/conv525/conv525_kernel2/conv_525_5/results_by_domain/'
 
 if not os.path.exists(save_dir):
     os.mkdir(save_dir)

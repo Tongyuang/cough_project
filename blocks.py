@@ -50,3 +50,4 @@ def res_block_1d(X,filters,kernel_size,shortcut=True,padding='same',strides=1,ac
     return X1 # (batch,steps,channels) , won't change channels
 
 
+

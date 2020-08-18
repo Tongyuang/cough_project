@@ -9,12 +9,13 @@ import config
 from config import config as c
 import os
 
-def visualize(wav,lbl_real,lbl_predicted=None,ax=plt):
+def visualize(wav,lbl_real,lbl_predicted=None,name=None,ax=plt):
     '''
     visulization
     para wav: wave file
     para lbl_real: real lable file
     para lbl_pred: pred lable file
+    para name: str-like, name of wav
     para ax: drawing tool, default plt
     '''
     if lbl_predicted is None:
@@ -37,6 +38,9 @@ def visualize(wav,lbl_real,lbl_predicted=None,ax=plt):
     axs[0].plot(wav_array)
     axs[0].set_ylabel('initial wave')
     axs[0].set_xlim([0,wav_array.shape[0]])
+
+    if name is not None:
+        axs[0].set_title(name)
 
     pos = np.linspace(ax.axis()[0],ax.axis()[1],lbl_real.shape[0])
 
@@ -203,19 +207,24 @@ def add_background_noise(wav,db=[-20,-8]):
     noise,_ = random_crop(noise,lbl=None)
     return (wav+noise)
 
-def add_loud_noise(wav):
+def add_loud_noise(wav_name,domain):
 
-    def add_noise(wav,noise,noise_ampli=0.75,silence_ampli=0.08,silence_range=8000):
+    def add_noise(wav_name,domain,silence_dict,noise,noise_ampli=0.75,silence_ampli=0.08,silence_range=8000):
         '''
         add loud noise where there's a long-time silence
         silence: when the amplitude is less than 0.08
         add noise that has max amplitude=noise_ampli*max(wav)
 
-        para wav: initial wav
+        para wav_name: initial wav_name
+        para domain_name: domain_name
         para noise: noise
         '''
         
-
+        domain_path = 'wav_dur_{}_{}'.format(config.sr_str,config.domain_name_dict[domain])
+        wav_path = config.config_data['folder_data']+'/'+domain_path+'/'+wav_name +'.wav'
+        
+        _, wav = wavfile.read(wav_path) 
+       
         wav = np.array(wav)
         noise = np.array(noise)
 
@@ -224,29 +233,11 @@ def add_loud_noise(wav):
         
         # if there's a long-time silence:
 
-        silence_list = []
-        start_flag = 0
-        end_flag = 0
-
-        for i in range(wav.shape[0]):
-            if np.abs(wav[i]) < silence_ampli:
-                if start_flag<=end_flag:
-                    end_flag = i
-                else:
-                    start_flag = i
-                    end_flag = start_flag
-            else:
-                if start_flag >= end_flag:
-                    continue
-                else:
-                    # if silence range
-                    if end_flag-start_flag>silence_range:
-                        silence_list.append((start_flag,end_flag))
-                    start_flag = i
-                    end_flag=start_flag
+        silence_list = silence_dict[wav_name]
         
         if len(silence_list):
-            for (start_idx,end_idx) in silence_list:
+            for sublist in silence_list:
+                start_idx,end_idx = sublist[0],sublist[1]
                 # random select
                 if noise.shape[0] < end_idx-start_idx:# noise too short
                     continue
@@ -257,20 +248,17 @@ def add_loud_noise(wav):
                 noise_part = noise[noise_start_idx:noise_end_idx]
                 noise_part = ( noise_part / (np.max((np.max(noise_part),np.abs(np.min(noise_part))))) )* noise_ampli * wav_max_ampli 
                 wav[start_idx:end_idx] += noise_part
-        
-
-        return wav
     
-    if not os.path.exists(config.noise_path):
-        raise Exception('noise path not exist!')
+        return np.asarray(wav)
+    
 
     noise_file = config.noise_file_list[random.randint(0,len(config.noise_file_list)-1)]
 
     noise_file = config.noise_path + '/' + noise_file
 
     _, noise = wavfile.read(noise_file,'r')
-
-    wav = add_noise(wav,noise)
+    
+    wav = add_noise(wav_name,domain,config.silence_dict,noise)
 
     return wav
 

@@ -1,6 +1,8 @@
 import json
 
-json_dict_path='../data/subtype_cv_sample_dict.json'
+subtype_cv_sample_dict_path='../data/subtype_cv_sample_dict.json'
+
+silence_dict_path='../data/silence_dict_json.json'
 
 def str2tuple(str_in):
     '''
@@ -31,7 +33,7 @@ def listlist2tuplelist(list_in):
         output_list.append((sub_list[0],sub_list[1]))
     return output_list
 
-def load_dict(json_dict_path=json_dict_path):
+def load_dict(json_dict_path=subtype_cv_sample_dict_path):
     with open(json_dict_path,'r') as json_dict:
         subtype_cv_sample_dict = json.load(json_dict)
 
@@ -41,6 +43,18 @@ def load_dict(json_dict_path=json_dict_path):
     for key in key_list:
         origin_dict[str2tuple(key)] = listlist2tuplelist(subtype_cv_sample_dict[key])
 
-    return origin_dict
+    with open(silence_dict_path,'r') as silence_dict_json:
+        silence_dict = json.load(silence_dict_json)
+
+    return (origin_dict,silence_dict)
 
 
+if __name__ == "__main__":
+    with open(silence_dict_path,'r') as silence_dict_json:
+        silence_dict = json.load(silence_dict_json)
+    
+    #for key in list(silence_dict.keys()):
+    #   if len(silence_dict[key]) > 1:
+    #       print(key)
+    #       break
+    print(silence_dict['wav_audioset_--gqmSD5paQ_0'])
