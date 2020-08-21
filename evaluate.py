@@ -9,15 +9,16 @@ from postprocessor import metrics,binary,normalization
 from sklearn.metrics import roc_curve,auc
 
 import tensorflow as tf
-from focal_loss import focal_loss
+from models import model_conv_525,model_conv_complex,model_conv_525_LSTM
 
 from dataGenerator import train_valid_spliter, DataGenerator
 from metrics import F1Score
 
-def load_model(model_dir,model_name='conv_model_1d'):
+import config
+def Load_model(model_dir,model_name='conv_model_1d'):
     if model_name == 'conv_model_1d':
-        model = conv_model_1d()
-        model.compile(optimizer='adam', loss=focal_loss, metrics=['accuracy','Precision','Recall',F1Score()]) 
+        model = model_conv_525_LSTM()
+        model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy','Precision','Recall',F1Score()]) 
         model.load_weights(model_dir)
         model.summary()
     elif model_name == 'res_model_1d':
@@ -30,17 +31,18 @@ def load_model(model_dir,model_name='conv_model_1d'):
 
 if __name__ == "__main__":
 
-    model_dir = './checkpoints/conv_525_3/cp/cp.index'
+    model_dir = './checkpoints/conv525/conv525_kernel2/conv_525_5/cp/cp.ckpt'
 
-    dict1 = load_dict()
+
     # generate train_valid dict
-    tvs = train_valid_spliter(dict1,0)
+    tvs = train_valid_spliter(config.subtype_CV_dict,0)
     train,valid = tvs.gen_train_valid_df()
 
     # dataloader
     #train_data = DataGenerator(TRAIN=True,subtype_dict=train,if_preprocess=True)
     valid_data = DataGenerator(TRAIN=False,subtype_dict=valid,if_preprocess=False)
 
-    model = load_model(model_dir)
+    model = Load_model(model_dir)
     scores = model.evaluate_generator(valid_data,steps=1)
     print(scores)
+    print(model.metrics_names)

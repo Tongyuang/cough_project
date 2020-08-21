@@ -12,18 +12,13 @@ from load_dict import load_dict
 
 from models import model_conv_525,res_model_1d,model_conv_525_LSTM,model_conv_525_GRU,My_Unet_1d
 
-from tensorflow.keras import backend as K
 from tensorflow.keras.models import load_model
 import tensorflow as tf
-
+from tensorflow.keras import backend as K
 import socket
 from focal_loss import focal_loss
 
-#from metrics import F1Score
-
-# in case GPU memory exceeds
-#from tensorflow.compat.v1 import ConfigProto
-#from tensorflow.compat.v1 import InteractiveSession
+from list_to_csv import list_to_csv
 from metrics import F1Score
 
 save_weights_on_load = False#True
@@ -32,7 +27,25 @@ def lr_scheduler(epoch):
   if epoch < 1500:
     return(1e-4)
   else:
-    return(float(1e-4 * K.exp(0.00025 * (1500 - epoch))))
+    return(float(1e-4 * K.exp(0.00025 * (1500 - epoch)))) # .001
+
+class epoch_callback(tf.keras.callbacks.Callback):
+
+    def __init__(self, model, val_gen, result_list):
+        self.model = model
+        self.val_gen = val_gen
+        self.result_list = result_list
+
+    def on_epoch_begin(self, epoch, logs=None):
+        return
+
+    def on_epoch_end(self, epoch, logs=None):
+
+        if epoch % 10 != 0:
+            return
+
+        scores = self.model.evaluate_generator(self.val_gen, steps=10, verbose=True) # ['loss', 'accuracy', 'precision', 'recall', 'F1']
+        self.result_list.append((epoch,scores))
 
 
 def train(args):
@@ -48,11 +61,13 @@ def train(args):
     cp_path = folder + '/cp'
     model_path = folder + '/model'
     log_path = folder + '/logs'
+    
 
     for path in [cp_path,model_path,log_path]:
         if not os.path.exists(path):
             os.mkdir(path)
 
+    
     
     # generate train_valid dict
     tvs = train_valid_spliter(config.subtype_CV_dict,CV)
@@ -86,15 +101,27 @@ def train(args):
         model.compile(optimizer='adam', loss=focal_loss, metrics=['accuracy','Precision','Recall',F1Score()]) 
     # callback
 
+    output_list = []
     cp_file = cp_path+'/cp.ckpt'
-    cp_callback = [ tf.keras.callbacks.ModelCheckpoint(filepath=cp_file,monitor='val_loss',save_weights_only=True,verbose=1),
+    cp_callback = [ tf.keras.callbacks.ModelCheckpoint(filepath=cp_file,monitor='Recall',save_weights_only=True,save_best_only=True,verbose=2),
                     tf.keras.callbacks.TensorBoard(log_dir = log_path),
-                    tf.keras.callbacks.LearningRateScheduler(lr_scheduler)]
+                    tf.keras.callbacks.LearningRateScheduler(lr_scheduler),
+                    epoch_callback(model,valid_data,output_list)]
 
 
     model.summary()
 
-    model.fit_generator(generator=train_data, steps_per_epoch=50, epochs=2500,validation_data=valid_data, validation_steps=10,callbacks=cp_callback)
+    initial_epoch = args.initial_epoch
+    if len(os.listdir(cp_path))>0 and args.continue_training:
+        # continue
+        try:
+            model.load_weights(cp_file)
+        except:
+            initial_epoch = 0
+            raise Exception('failed to load checkpoint from current folder, will start training without initial checkpoints.')
+            
+
+    model.fit_generator(generator=train_data, steps_per_epoch=args.steps_each_epoch, epochs=args.epochs,validation_data=valid_data, validation_steps=10,callbacks=cp_callback,initial_epoch=initial_epoch,verbose=2)
                         #validation_freq=10)    
                         #callbacks=callbacks, initial_epoch=initial_epoch)  
     
@@ -107,6 +134,9 @@ def train(args):
     
     model.save_weights(savefile_path+'/model_weights')
 
+    output_csv_file = folder + '/metrics.csv'
+    list_to_csv(output_list,output_csv_file)
+    print('Done')
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
@@ -119,6 +149,9 @@ if __name__ == '__main__':
     parser.add_argument('--model_name', type=str, default="conv_model_1d", help="model name")
     parser.add_argument('--dropout', type=float, default=0.0, help="add drop out? only valid for some models")
     parser.add_argument('--steps_each_epoch', type=int, default=50, help="steps each epoch")
+    parser.add_argument('--epochs', type=int,default=2500, help="number of epochs")
+    parser.add_argument('--continue_training',type=bool, default=True, help='if continue training from previous checkpoints')
+    parser.add_argument('--initial_epoch',type=int, default=0, help='initial epoch')
     args = parser.parse_args()
 
     if args.CV not in [0,1,2,3]:

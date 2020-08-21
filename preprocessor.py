@@ -57,7 +57,7 @@ def visualize(wav,lbl_real,lbl_predicted=None,name=None,ax=plt):
             axs[1].text(0,y_max,'Bad labels: too little labels')
     else:
         if lbl_array.shape[0] > 50 :
-            axs[1].plot(pos,lbl_array,color='red',label='true')
+            axs[1].plot(pos,lbl_array,color='red',label='true lables')
             axs[1].set_xlim([0,wav_array.shape[0]])
             axs[1].set_ylabel('lables')
             axs[1].legend()
@@ -69,7 +69,7 @@ def random_crop(wav,lbl=None,extra_p = 0.25):
 
     '''
     random crop :
-    para wav: input wave
+    para wav: input wavelables
     para lbl: input lable
     extra_p: ratio of expanded length to sr, default 0.25, so 
     default expanded length is 0.25*16000=4000, which will be 
