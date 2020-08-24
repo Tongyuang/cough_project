@@ -170,8 +170,8 @@ if __name__ == "__main__":
             os.mkdir(save_path)
         for i in range(32):
             pred = preds_no_cough[i]
-            pred[pred>=0.6] = 1
-            pred[pred<=0.6] = 0
+            pred[pred>=0.5] = 1
+            pred[pred<=0.5] = 0
             plt.figure()
             visualize(wav_no_cough[i],lbl_no_cough[i],pred,ax=plt,name=no_cough_name_list[i])
             plt.savefig(save_path+'/%s_%d'%(domain,i)+'.png', bbox_inches='tight')

@@ -142,7 +142,7 @@ def My_Unet_1d(batch_size=config.config['batch_size'],drop_p=0.0,output_layer=No
         X = MaxPooling1D(pool_size=2,strides=2)(X)
 
         X = Dropout(drop_p)(X) if drop_p>0 else X
-        return X
+        return X # 32,500,32
 
     def Decoder(X,features=64,BN=True,drop_p = drop_p,depth=4):
         # Encoder output:(32,500,64)
@@ -153,7 +153,7 @@ def My_Unet_1d(batch_size=config.config['batch_size'],drop_p=0.0,output_layer=No
             return MaxPooling1D(pool_size=2,strides=2,padding='same')(X),X
 
         def up_samp(X,skip_tensor_X,filters,BN,dropout=drop_p):
-            X = UpSampling1D(size=2)(X)
+            X = UpSampling1D(size=2)(X) # 32,500,64 -> 32,1000,64 
 
             s_width = skip_tensor_X.shape[1]
             width = X.shape[1]
