@@ -13,6 +13,7 @@ from models import (My_Unet_1d, model_conv_525, model_conv_525_GRU,
                     model_conv_525_LSTM, model_conv_complex, res_model_1d)
 from preprocessor import random_crop
 
+
 # confusion_matrix
 cm = tf.math.confusion_matrix
 
@@ -155,16 +156,97 @@ def evaluate_samples(model,wav_list,num_samples=500,batch_size=config.config['ba
     acc,prec,Recall,F1 = calculate_metrics(TP,FP,TN,FN)
     return (acc,prec,Recall,F1)
 
+def calculate_error(model,cough_wav_list,
+                    batch_size=config.config['batch_size'],
+                    duration_t=config.duration_t,
+                    output_file='./evaluations/duration_error.txt'):
+    '''
+    calculate the error of cough length between labels and predictions
+    
+    return a txt file:
+    index   |   domain   |  long-name   |   ground_truth_coughs     |   pred_coughs     |   time_error_ms
+
+    para cough_wav_list: list of cough samples
+    para batch_size: batch_size
+    para duration_t: time interval
+
+    '''
+    num_batch = 0
+    try:
+        f = open(output_file,'w')
+    except:
+        raise Exception('could not open file: {}'.format(output_file))
+    
+    time_interval = 1e3*duration_t # ms
+    # all the wav:
+    while (num_batch+1)*batch_size<=len(cough_wav_list):
+        
+        wav_sub_list = wav_list[num_batch*batch_size:(num_batch+1)*batch_size]
+        # get wav array
+        wav_array,lbl_array = get_array(wav_sub_list)
+
+        wav_array = np.expand_dims(wav_array,-1)# 32,80000,1
+        lbl_array = np.expand_dims(lbl_array,-1)# 32,500,1
+        # predictions
+        preds = model.predict(wav_array)
+        preds = preds[0:lbl_array.shape[0]]
+        preds[preds>=0.5] = 1
+        preds[preds<0.5] = 0
+
+        for (i,(domain,wav_name)) in enumerate(wav_sub_list):
+            truth_duration = int(np.sum(lbl_array[i].flatten()))
+            pred_duration = int(np.sum(preds[i].flatten()))
+
+            time_error = (truth_duration-pred_duration)*time_interval
+            f.writelines('%s,%s,%d,%d,%d'%(domain,wav_name,truth_duration,pred_duration,time_error))
+            f.writelines('\n')
+        
+        num_batch += 1 # !!!!!
+        print('file predicted:%d / %d'%(num_batch*batch_size,len(cough_wav_list)))
+    
+    if num_batch*batch_size < len(cough_wav_list):
+        wav_sub_list = wav_list[num_batch*batch_size:len(cough_wav_list)]
+        # get wav array
+        wav_array,lbl_array = get_array(wav_sub_list)
+
+        wav_array = np.expand_dims(wav_array,-1)# 32,80000,1
+        lbl_array = np.expand_dims(lbl_array,-1)# 32,500,1
+        
+        # append
+        missing_rows = batch_size-wav_array.shape[0]
+        wav_array = np.concatenate((wav_array,np.zeros((missing_rows,wav_array.shape[1],wav_array.shape[2]))),0)
+
+        preds = model.predict(wav_array)
+        preds[preds>=0.5] = 1
+        preds[preds<0.5] = 0
+
+        for (i,(domain,wav_name)) in enumerate(wav_sub_list):
+            truth_duration = int(np.sum(lbl_array[i].flatten()))
+            #print(lbl_array[i].shape,lbl_array[i])
+            #print(truth_duration)
+            pred_duration = int(np.sum(preds[i].flatten()))
+
+            time_error = (truth_duration-pred_duration)*time_interval
+            f.writelines('%s,%s,%d,%d,%d'%(domain,wav_name,truth_duration,pred_duration,time_error))
+            f.writelines('\n')
+        
+        print('done!')
+        f.close()
+    
+    return 
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--model_dir', type=str, help="where is the model")
-    parser.add_argument('--model_name', type=str, default="conv_model_1d", help="model name")
+    parser.add_argument('--model_dir', type=str, default='./checkpoints/conv525_kernel2/conv_525_5/model/model_weights/model_weights', help="where is the model")
+    parser.add_argument('--model_name', type=str, default="conv_model_1d_LSTM", help="model name")
     parser.add_argument('--dropout', type=float, default=0.0, help="add drop out? only valid for some models")
     parser.add_argument('--CV',type=int, default=0, help="CV for validation, default 0")
     parser.add_argument('--sound',type=str, default='cough', help='sound category for evaluating')
     parser.add_argument('--num_samples',type=int, default=32, help='number of samples for evaluating')
+    parser.add_argument('--output_file',type=str,default='./evaluations/duration_error.txt', help='where is the output')
 
     args = parser.parse_args()
 
@@ -172,21 +254,22 @@ if __name__ == "__main__":
     
     os.environ['CUDA_VISIBLE_DEVICES'] = "0"
     
-    model_dir = './checkpoints/conv525_kernel2/conv_525_5/model/model_weights/model_weights'
-    model_name = 'conv_model_1d_LSTM'
+
     num_samples= args.num_samples
 
     wav_list = config.subtype_CV_dict[(args.sound,args.CV)]
     #num_samples = args.num_samples
     model = Load_model(args.model_dir,model_name=args.model_name)
+
+    calculate_error(model,wav_list,output_file=args.output_file)
     
-    (acc,prec,Recall,F1) = evaluate_samples(model,wav_list,num_samples)
+    #(acc,prec,Recall,F1) = evaluate_samples(model,wav_list,num_samples)
 
-    print('done!')
-    print('='*20)
-    print( "CV:{}    |   sound:{}    |   length of sample list:{}    |   number of samples:{}".format(args.CV,args.sound,len(wav_list),num_samples))
+    #print('done!')
+    #print('='*20)
+    #print( "CV:{}    |   sound:{}    |   length of sample list:{}    |   number of samples:{}".format(args.CV,args.sound,len(wav_list),num_samples))
 
-    print('Accuracy:    %.4f'%(acc))
-    print('Precision:    %.4f'%(prec))
-    print('Recall:    %.4f'%(Recall))
-    print('F1:    %.4f'%(F1))
+    #print('Accuracy:    %.4f'%(acc))
+    #print('Precision:    %.4f'%(prec))
+    #print('Recall:    %.4f'%(Recall))
+    #print('F1:    %.4f'%(F1))

@@ -149,10 +149,10 @@ if __name__ == "__main__":
         preds_cough = model.predict(wav_cough)
         preds_no_cough = model.predict(wav_no_cough)
         # cough
-        if not os.path.exists(save_dir+'{}'.format(domain)):
-            os.mkdir(save_dir+'{}'.format(domain))
+        if not os.path.exists(save_dir+'/{}'.format(domain)):
+            os.mkdir(save_dir+'/{}'.format(domain))
 
-        save_path = save_dir+'{}/cough'.format(domain)
+        save_path = save_dir+'/{}/cough'.format(domain)
         if not os.path.exists(save_path):
             os.mkdir(save_path)
         for i in range(32):
@@ -165,7 +165,7 @@ if __name__ == "__main__":
             #plt.show()
         
         # no cough
-        save_path = save_dir+'{}/no_cough'.format(domain)
+        save_path = save_dir+'/{}/no_cough'.format(domain)
         if not os.path.exists(save_path):
             os.mkdir(save_path)
         for i in range(32):

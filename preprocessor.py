@@ -38,7 +38,7 @@ def visualize(wav,lbl_real,lbl_predicted=None,name=None,ax=plt):
     axs[0].plot(wav_array)
     axs[0].set_ylabel('initial wave')
     axs[0].set_xlim([0,wav_array.shape[0]])
-
+    axs[0].set_ylim([-1,1])
     if name is not None:
         axs[0].set_title(name)
 
